@@ -1,0 +1,17 @@
+# Ignore everything in the project by default.
+/*
+
+# Keep this allowlist in Git.
+!/.gitignore
+!/car_pid.ioc
+
+# Application entry point.
+!/Core/
+/Core/*
+!/Core/Src/
+/Core/Src/*
+!/Core/Src/main.c
+
+# User application sources.
+!/user/
+!/user/**
