@@ -131,5 +131,5 @@ void Control(void)
     MOTO1 = PWM_out - Turn_out;
     MOTO2 = PWM_out + Turn_out;
     Limit(&MOTO1, &MOTO2);
-    Load(-MOTO1, MOTO2);
+    Load(MOTO1, MOTO2);
 }

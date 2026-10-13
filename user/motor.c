@@ -1,8 +1,8 @@
 #include "head.h"
 
-#define PWM_MAX 7199 // TIM1 ARR = 7200-1
-#define PWM_Dead 100
-#define PWM_Dead_Comp 500 // 489
+#define PWM_MAX 4320 // TIM1 ARR = 7200-1
+#define PWM_Dead 70
+#define PWM_Dead_Comp 300 // 489
 uint32_t last_tick = 0;
 static uint8_t motor_output_enabled = 0;
 
@@ -11,8 +11,7 @@ static void Motor_ClearHardwareOutput(void)
 {
     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, 0);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 |
-                                 GPIO_PIN_14 | GPIO_PIN_15,
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15,
                       GPIO_PIN_RESET);
 }
 
