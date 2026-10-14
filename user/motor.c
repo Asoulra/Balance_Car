@@ -1,12 +1,12 @@
 #include "head.h"
 
-#define PWM_MAX 4320 // TIM1 ARR = 7200-1
+#define PWM_MAX 6100 // TIM1 ARR = 7200-1
 #define PWM_Dead 70
 #define PWM_Dead_Comp 300 // 489
 uint32_t last_tick = 0;
 static uint8_t motor_output_enabled = 0;
 
-/* Immediately remove PWM and put all TB6612 direction inputs low. */
+/* 清理tb6612CCR通道的缓存. */
 static void Motor_ClearHardwareOutput(void)
 {
     __HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_4, 0);
@@ -23,7 +23,6 @@ void Motor_OutputDisable(void)
 
 void Motor_OutputEnable(void)
 {
-    /* Always begin from zero; the next Load() supplies the first valid command. */
     Motor_ClearHardwareOutput();
     motor_output_enabled = 1;
     last_tick = HAL_GetTick();

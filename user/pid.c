@@ -10,54 +10,71 @@ short aacx, aacy, aacz;
 #define BALANCE_GYRO_USE_X 1
 
 // 闭环控制
-int Vertical_out, Velocity_out, Turn_out, Target_Speed, Target_turn, MOTO1, MOTO2;
+int Turn_out, Target_Speed, Target_turn, MOTO1, MOTO2;
+float Vertical_out, Velocity_out;
 volatile int Vertical_P_out, Vertical_D_out; // Vertical-loop P/D terms for OLED debug
 volatile int Velocity_P_out, Velocity_I_out; // Velocity-loop P/I terms for OLED debug
 // 平衡倾角偏置，单位必须与 pitch(度) 一致。原 0.03 是弧度≈1.72度，现统一用度。
-float Med_Angle = -7.87f;                               //-6.23f
-float Vertical_Kp = 450, Vertical_Kd = 0.52435f;        // 430 0.87391 490 0.9 0.52435
-float Velocity_Kp = -1.687f, Velocity_Ki = -0.0084381f; // 20ms累计编码器计数；Ki=Kp/200 -1.687
+float Med_Angle = -7.52637f;                    //-6.23f
+float Vertical_Kp = 450, Vertical_Kd = 0.9606f; // 430 0.87391 490 0.9 0.52435
+/* 速度外环输出单位为度。先只启用较小的比例项，确认回正方向和响应后再加入积分。 */
+float Velocity_Kp = -0.03f, Velocity_Ki = 0.0f;
 float Turn_Kp = 0, Turn_Kd = 0;
 uint8_t stop;
 uint8_t pid_run = 1; // 上电直接启动 PID（调试用，专注排查为何车不动）
 
 // 直立环pid控制器
 // 期望角度，真实角度，角速度
-int Vertical(float Med, float Angle, float gyo_y)
+float Vertical(float Med, float Angle, float gyo_y)
 {
     float p_term = Vertical_Kp * (Angle - Med);
     float d_term = Vertical_Kd * gyo_y;
 
     Vertical_P_out = (int)p_term;
     Vertical_D_out = (int)d_term;
-    return (int)(p_term + d_term);
+    return p_term + d_term;
 }
 
 // 速度环pid控制器
 // 期望速度，真实速度（左右编码器）
-int Velocity(int Target, int encoder_L, int encoder_R)
+float Velocity(int Target, int encoder_L, int encoder_R)
 {
     // 算偏差值
-    int Err, Err_Lowout, temp;
-    Err = (encoder_L + encoder_R) - Target;
+    float Err, Err_Lowout, temp;
+    Err = (float)((encoder_L + encoder_R) - Target);
     // 滤波
-    static int Err_LowOut_last, Encoder_S;
-    static float a = 0.7;
-    Err_Lowout = (1 - a) * Err + a * Err_LowOut_last;
+    static float Err_LowOut_last, Encoder_S;
+    static const float a = 0.7f;
+
+    if (stop == 1)
+    {
+        Encoder_S = 0.0f;
+        Err_LowOut_last = 0.0f;
+        Velocity_P_out = 0;
+        Velocity_I_out = 0;
+        stop = 0;
+        return 0.0f;
+    }
+
+    Err_Lowout = (1.0f - a) * Err + a * Err_LowOut_last;
     Err_LowOut_last = Err_Lowout;
     // 积分
     Encoder_S += Err_Lowout;
     // 积分限幅
-    Encoder_S = Encoder_S > 20000 ? 20000 : (Encoder_S < (-20000) ? (-20000) : Encoder_S);
-    if (stop == 1)
-        Encoder_S = 0, stop = 0;
+    Encoder_S = Encoder_S > 20000.0f ? 20000.0f : (Encoder_S < -20000.0f ? -20000.0f : Encoder_S);
     // 速度环计算
     float p_term = Velocity_Kp * Err_Lowout;
     float i_term = Velocity_Ki * Encoder_S;
 
     Velocity_P_out = (int)p_term;
     Velocity_I_out = (int)i_term;
-    temp = (int)(p_term + i_term);
+    temp = (p_term + i_term);
+    // 目标角度的3°限幅
+    if (temp > 10.0f)
+        temp = 10.0f;
+    if (temp < -10.0f)
+        temp = -10.0f;
+
     return temp;
 }
 
@@ -125,11 +142,42 @@ void Control(void)
     }
     // 与当前互换后的 pitch 对应，使用 X 轴角速度作为直立环微分项。
     short balance_gyro = BALANCE_GYRO_USE_X ? gyrox : gyroy;
+
+    // 大角度时引导直立环主控
+    if (fabsf(pitch - Med_Angle) > 10.0f)
+    {
+        Velocity_out = 0.0f;
+        stop = 1; // 下一次速度环运行时清除积分
+    }
+
     Vertical_out = Vertical(Velocity_out + Med_Angle, pitch, balance_gyro);
     Turn_out = Turn(gyroz, Target_turn);
     PWM_out = -Vertical_out;
+
+    /** 大倾角动态 PWM 补偿开始 ***/
+    {
+        float angle_err = pitch - (Med_Angle + Velocity_out);
+        float abs_angle_err = fabsf(angle_err);
+
+        /* 仅在车身继续向倾倒方向运动且角速度超过约 10 度/秒时助推。 */
+        if ((angle_err * (float)balance_gyro > 0.0f) &&
+            (fabsf((float)balance_gyro) > 164.0f))
+        {
+            /* 8 度开始增强，15 度时平滑达到最大 10%。 */
+            float boost_ratio = (abs_angle_err - 8.0f) / 7.0f;
+
+            if (boost_ratio < 0.0f)
+                boost_ratio = 0.0f;
+            if (boost_ratio > 1.0f)
+                boost_ratio = 1.0f;
+
+            PWM_out = (int)((float)PWM_out * (1.0f + 0.10f * boost_ratio));
+        }
+    }
+    /** 大倾角动态 PWM 补偿结束 ***/
+
     MOTO1 = PWM_out - Turn_out;
     MOTO2 = PWM_out + Turn_out;
     Limit(&MOTO1, &MOTO2);
-    Load(MOTO1, MOTO2);
+    Load(-MOTO1, -MOTO2);
 }

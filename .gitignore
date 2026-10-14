@@ -1,16 +1,37 @@
-# Ignore everything in the project by default.
-/*
+# Build output directories
+/build/
+/Debug/
+/Release/
+/EIDE/build/
+/MDK-ARM/car_pid/
 
-# Keep this allowlist in Git.
-!/.gitignore
+# Compiler and assembler outputs
+*.o
+*.obj
+*.d
+*.dep
+*.crf
+*.lst
 
-# Application entry point.
-!/Core/
-/Core/*
-!/Core/Src/
-/Core/Src/*
-!/Core/Src/main.c
+# Linker and firmware outputs
+*.axf
+*.elf
+*.hex
+*.bin
+*.map
+*.lnp
+*.s19
+*.srec
 
-# User application sources.
-!/user/
-!/user/**
+# Generated build reports and logs
+*.build_log.htm
+*.map.old
+*.map.view
+*.objlist
+*_build.log
+
+# IDE-specific files
+Core/.agents
+core/.codex
+EIDE/*
+user/.agents
