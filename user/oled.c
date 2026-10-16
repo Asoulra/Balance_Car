@@ -5,9 +5,9 @@
 static HAL_StatusTypeDef OLED_I2C_MemWrite(uint16_t addr, uint16_t reg, uint8_t *data, uint16_t len)
 {
     HAL_StatusTypeDef status;
-    HAL_NVIC_DisableIRQ(TIM3_IRQn);
+    HAL_NVIC_DisableIRQ(TIM2_IRQn);
     status = HAL_I2C_Mem_Write(&hi2c1, addr, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
-    HAL_NVIC_EnableIRQ(TIM3_IRQn);
+    HAL_NVIC_EnableIRQ(TIM2_IRQn);
     return status;
 }
 

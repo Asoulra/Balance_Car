@@ -25,6 +25,6 @@ void Encoder_Clear(TIM_HandleTypeDef *htim)
  */
 void Encoder_ClearAll(void)
 {
-    Encoder_Clear(&htim2);
+    Encoder_Clear(&htim3);
     Encoder_Clear(&htim4);
 }

@@ -138,11 +138,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM1_Init();
-  MX_TIM2_Init();
   MX_I2C1_Init();
   MX_TIM4_Init();
   MX_TIM3_Init();
   MX_USART2_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   VOFA_Init();
   HAL_Delay(500);
@@ -163,7 +163,7 @@ int main(void)
   /* 电机 PWM/编码器与 MPU/DMP 解耦，先初始化硬件。 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
   Load(0, 0);
 
@@ -174,7 +174,7 @@ int main(void)
   Load(0, 0);
 #endif
 
-  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE BEGIN 2 */
 #if OLED_ENABLE
   /* OLED 显示初始化，用于显示 PID 状态/按键自检（无需串口） */
@@ -347,11 +347,11 @@ void SystemClock_Config(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   static uint8_t tick20ms = 0;
-  if (htim->Instance == TIM3)
+  if (htim->Instance == TIM2)
   {
 #if SPEED_DIRECTION_OLED
     /* 方向测试仅采集编码器，禁止电机输出，便于安全地手推车轮。 */
-    Encoder_Left = Read_Speed(&htim2);
+    Encoder_Left = Read_Speed(&htim3);
     Encoder_Right = -Read_Speed(&htim4);
     encoder_left_sum += Encoder_Left;
     encoder_right_sum += Encoder_Right;

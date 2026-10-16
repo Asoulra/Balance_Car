@@ -133,7 +133,7 @@ void Control(void)
         return;
     }
 
-    Encoder_Left = Read_Speed(&htim2);
+    Encoder_Left = Read_Speed(&htim3);
     Encoder_Right = -Read_Speed(&htim4);
     // 每次控制都尝试读取 FIFO；没有新数据时保持上一帧姿态和角速度。
     if (mpu_dmp_get_data(&pitch, &roll, &yaw) != 0)
